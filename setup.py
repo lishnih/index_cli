@@ -24,7 +24,7 @@ except IOError:
     README = CHANGES = ''
 
 
-from index.lib.info import __pkgname__, __description__, __version__
+from index_cli.core.info import __pkgname__, __description__, __version__
 
 
 if __name__ == '__main__':
@@ -52,7 +52,6 @@ if __name__ == '__main__':
         install_requires = [
             'PySide',
             'sqlalchemy',
-            'yaml',
         ],
 
         classifiers = [

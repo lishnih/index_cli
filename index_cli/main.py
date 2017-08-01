@@ -7,7 +7,7 @@ from __future__ import ( division, absolute_import,
 
 import sys, os, importlib, logging
 
-from .lib.backwardcompat import *
+from .core.backwardcompat import *
 from .recorder import Recorder
 
 

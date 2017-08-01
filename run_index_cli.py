@@ -8,8 +8,8 @@ from __future__ import ( division, absolute_import,
 import sys, os, argparse, logging
 import ConfigParser as configparser
 
-from index.main import main
-from index.lib.argparse_funcs import readable_file_or_dir_list, readable_file
+from index_cli.main import main
+from index_cli.core.argparse_funcs import readable_file_or_dir_list, readable_file
 
 
 def run(files, profile, **options):

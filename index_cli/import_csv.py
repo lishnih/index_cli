@@ -8,8 +8,8 @@ from __future__ import ( division, absolute_import,
 import sys, os, importlib, time, csv, codecs, cStringIO, logging
 import xlrd
 
-from .lib.backwardcompat import *
-from .lib.dump_html import plain
+from .core.backwardcompat import *
+from .core.dump_html import plain
 from .recorder import Recorder
 
 

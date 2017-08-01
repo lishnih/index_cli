@@ -11,6 +11,10 @@ from .dir import proceed_dir
 from .file import proceed_file
 
 
+# def opening(filename, profile, options):
+#     return
+
+
 def proceed(filename, options, RECORDER=None):
     if os.path.isdir(filename):
         logging.info(["Processing directory", filename])
@@ -31,3 +35,7 @@ def proceed(filename, options, RECORDER=None):
 
     else:
         logging.warning(["Directory/file not found", filename])
+
+
+# def closing(filename, options, RECORDER):
+#     return

@@ -8,8 +8,8 @@ from __future__ import ( division, absolute_import,
 import sys, argparse, logging
 import ConfigParser as configparser
 
-from index.import_csv import main
-from index.lib.argparse_funcs import readable_file_or_dir_list, readable_file
+from index_cli.import_csv import main
+from index_cli.core.argparse_funcs import readable_file_or_dir_list, readable_file
 
 
 if __name__ == '__main__':

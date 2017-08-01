@@ -10,7 +10,7 @@ import os, shutil, logging, traceback
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import scoped_session, sessionmaker, attributes
 
-from .lib.backwardcompat import *
+from .core.backwardcompat import *
 
 
 class Recorder(object):
@@ -68,7 +68,7 @@ class Recorder(object):
         t = self.base.metadata.tables.get(tablename)
         if t is None:
             print(self.base.metadata.tables.keys())
-            raise Exception, "No such table: '{0}'".format(tablename)
+            raise Exception("No such table: '{0}'".format(tablename))
         self.engine.execute(t.insert(), records)
 
 
