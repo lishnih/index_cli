@@ -5,37 +5,54 @@
 from __future__ import ( division, absolute_import,
                          print_function, unicode_literals )
 
-import os, logging
+import os, importlib
 
 from .dir import proceed_dir
 from .file import proceed_file
+from ...recorder import Recorder
 
 
-# def opening(filename, profile, options):
-#     return
+def opening(package, options, status):
+    dbmodels = options.get('dbmodels', 'dir_file')
+
+    # Загружаем модели
+    models = package + '.models.' + dbmodels
+#   models = __package__ + '.models.' + dbmodels
+    models_module = importlib.import_module(models)
+
+    # Создаём регистратор
+    recorder = Recorder(options, base=models_module.Base)
+    recorder.drop_all()
+    recorder.create_all()
+
+    return dict(recorder=recorder)
 
 
-def proceed(filename, options, RECORDER=None):
+def proceed(filename, options, status, recorder):
     if os.path.isdir(filename):
-        logging.info(["Processing directory", filename])
+        status.info("Processing directory", filename)
 
         # Dir
-        proceed_dir(filename, options, RECORDER)
+        proceed_dir(filename, options, status, recorder)
 
     elif os.path.isfile(filename):
-        logging.info(["Processing file", filename])
+        status.info("Processing file", filename)
 
         # Dir
         dirname = os.path.dirname(filename)
         dir_dict = dict(name=dirname)
-        DIR = RECORDER.reg_object1('dirs', dir_dict)
+        DIR = recorder.reg_object1('dirs', dir_dict)
 
         # File
-        proceed_file(filename, options, RECORDER, DIR)
+        proceed_file(filename, options, status, recorder, DIR)
 
     else:
-        logging.warning(["Directory/file not found", filename])
+        status.warning("Directory/file not found", filename)
 
 
-# def closing(filename, options, RECORDER):
-#     return
+def closing(options, status, recorder):
+    status.time
+    recorder.commit()
+    status.info("Commit time: {0}".format(status.time))
+
+    status.message = "Finished"

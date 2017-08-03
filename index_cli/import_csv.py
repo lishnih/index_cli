@@ -26,19 +26,19 @@ def main(options):
         return
 
 
-    # Загружаем регистратор
-    RECORDER = Recorder(options)
-    RECORDER.base = models_module.Base
+    # Создаём регистратор
+    recorder = Recorder(options)
+    recorder.base = models_module.Base
 
 
     t1 = time.time()
 
-    c1 = RECORDER.get_model('cells')
-    c2 = RECORDER.get_model('sheets')
-    c3 = RECORDER.get_model('files')
-    c4 = RECORDER.get_model('dirs')
+    c1 = recorder.get_model('cells')
+    c2 = recorder.get_model('sheets')
+    c3 = recorder.get_model('files')
+    c4 = recorder.get_model('dirs')
 
-    count = RECORDER.session.query(c1, c2, c3, c4).join(c2).join(c3).join(c4).count()
+    count = recorder.session.query(c1, c2, c3, c4).join(c2).join(c3).join(c4).count()
     logging.info("Records: {0}".format(count))
 
     offset = 0
@@ -50,7 +50,7 @@ def main(options):
         writer.writerow(["value", "row", "col", "sheet", "file", "dir"])
 
         while offset < count:
-            rows = RECORDER.session.query(c1, c2, c3, c4).join(c2).join(c3).join(c4).slice(offset, offset+limit).all()
+            rows = recorder.session.query(c1, c2, c3, c4).join(c2).join(c3).join(c4).slice(offset, offset+limit).all()
             logging.info([offset, limit, len(rows)])
             for i in rows:
                 cell, sheet, file, dir = i

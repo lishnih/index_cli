@@ -5,14 +5,14 @@
 from __future__ import ( division, absolute_import,
                          print_function, unicode_literals )
 
-import os, logging
+import os
 import xlrd
 
 from .data_funcs import filter_match
 from .sheet import proceed_sheet
 
 
-def proceed_book(filename, options, FILE):
+def proceed_book(filename, options, status, FILE):
     sh_list = []
     p_list = []
     count = 0
@@ -58,7 +58,7 @@ def proceed_book(filename, options, FILE):
             count += 1
 
             if count >= max:
-                logging.debug("flushing...")
+                status.debug("flushing...")
                 yield sh_list, p_list
 
                 sh_list = []

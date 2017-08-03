@@ -5,46 +5,49 @@
 from __future__ import ( division, absolute_import,
                          print_function, unicode_literals )
 
-import sys, os, importlib, logging
+import sys, os, importlib
 
 from .core.backwardcompat import *
-from .recorder import Recorder
+from .core.status1 import status1
 
 
-def main(files, profile=None, options=None):
-    if not profile:
-        profile = 'default'
-    if not options:
-        options = {}
+def main(files, profile='default', options={}, status=status1):
+    status.reset()
+    options['profile'] = profile
 
 
-    # Загружаем структуру БД
-    dbmodels = options.get('dbmodels', 'dir_file')
-    models = __package__ + '.models.' + dbmodels
-    try:
-        models_module = importlib.import_module(models)
-    except Exception as e:
-        logging.exception(["Error in the module", models])
+    if not files:
+        status.warning("Files not specified!")
         return
 
 
-    # Загружаем регистратор
-    RECORDER = Recorder(options)
-    RECORDER.create_all(models_module.Base)
-
-
-    # Загружаем обработчик
+    # Загружаем обработчик (handler)
     handler = __package__ + '.handlers.' + profile
     try:
         handler_module = importlib.import_module(handler)
+
     except Exception as e:
-        logging.exception(["Error in the handler", handler])
+        status.exception("Error in the handler", profile, e)
         return
+
 
     # Обработчик имеет точку входа 'proceed'
     if not hasattr(handler_module, 'proceed'):
-        logging.error(["Function 'proceed' is missing in the handler", handler])
+        status.error("Function 'proceed' is missing in the handler", profile)
         return
+
+
+    if hasattr(handler_module, 'opening'):
+        try:
+            runtime = handler_module.opening(__package__, options, status)
+
+        except Exception as e:
+            status.exception("Error during opening", profile, e)
+            return
+
+    else:
+        runtime = {}
+        status.debug("Function 'opening' is missing in the handler", profile)
 
 
     # Обработка
@@ -52,11 +55,13 @@ def main(files, profile=None, options=None):
         files = [files]
 
     for i in files:
-        i = os.path.abspath(i)
         try:
-            handler_module.proceed(i, options, RECORDER)
+            handler_module.proceed(i, options, status, **runtime)
         except Exception as e:
-            logging.exception(["Error during handle file", i])
+            status.exception("Error during handle the file", profile, e)
 
-    if not files:
-        logging.warning("Files not specified!")
+
+    if hasattr(handler_module, 'closing'):
+        handler_module.closing(options, status, **runtime)
+    else:
+        status.debug("Function 'closing' is missing in the handler", profile)

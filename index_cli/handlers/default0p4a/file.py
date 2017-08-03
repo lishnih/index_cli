@@ -7,8 +7,6 @@ from __future__ import ( division, absolute_import,
 
 import os, time
 
-from .book import proceed_book
-
 
 def preparing_file(filename, options, status, DIR):
     filenames_encoding = options.get('filenames_encoding', 'cp1251')
@@ -53,25 +51,4 @@ def proceed_file(filename, options, status, recorder, DIR):
 
 
 def post_proceed_file(options, status, recorder):
-    c = recorder.get_model('files')
-    cs = recorder.get_model('sheets')
-
-    rows = recorder.session.query(c).filter(c.ext.in_(['.xls', '.xlsx', '.xlsm', '.xlsb'])).all()
-    for row in rows:
-        dirname = row._dir.name
-        filename = row.name
-        filename = os.path.join(dirname, filename)
-
-        status.info(filename)
-        for sh_list, p_list in proceed_book(filename, options, status, row):
-            if sh_list:
-                recorder.insert('sheets', sh_list)
-
-            if p_list:
-                sheet_index = {}
-                rows = recorder.session.query(cs).filter_by(_files_id=row.id).all()
-                for i in rows:
-                    sheet_index[i.name] = i.id
-                for i in p_list:
-                    i['_sheets_id'] = sheet_index[i['_sheet_name']]
-                recorder.insert('cells', p_list)
+    pass

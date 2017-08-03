@@ -16,34 +16,71 @@ from .core.backwardcompat import *
 class Recorder(object):
 
 
-    def __init__(self, options={}):
-        self.dburi = getDbUri(options)
-        self.engine = create_engine(self.dburi)
-    
-        if self.engine.name == "sqlite":
-            filename = self.engine.url.database
-            if filename:
-                dirname = os.path.dirname(filename)
-                if not os.path.exists(dirname):
-                    os.makedirs(dirname)
-    
-        self.session = scoped_session(sessionmaker())
-        self.session.configure(bind=self.engine)
+    def __init__(self, options={}, metadata=None, base=None, session=None):
+        self.metadata = metadata
+        self.base = base
+        self.session = session
 
-#         import sqlite3
-#         self.engine.text_factory = sqlite3.OptimizedUnicode
+        dburi = getDbUri(options)
+        if dburi:
+            engine = create_engine(dburi)
+            if engine.name == "sqlite":
+                filename = engine.url.database
+                if filename:
+                    dirname = os.path.dirname(filename)
+                    if not os.path.exists(dirname):
+                        os.makedirs(dirname)
+
+        if not session:
+            self.session = scoped_session(sessionmaker())
+            self.session.configure(bind=engine)
 
         self.model_cache = {}
-    
 
-    def create_all(self, base):
-        self.base = base
 
-        self.base.metadata.drop_all(bind=self.engine)
+    @property
+    def metadata(self):
+        if not self._metadata:
+            raise Exception("No metadata associated!")
 
-        self.base.metadata.create_all(self.engine)
+        return self._metadata
 
-        logging.info(["Db", self.engine.url.database])
+
+    @metadata.setter
+    def metadata(self, metadata):
+        self._base = None
+        self._metadata = metadata
+
+
+    @property
+    def base(self):
+        if not self._base:
+            raise Exception("No base associated!")
+
+        return self._base
+
+
+    @base.setter
+    def base(self, base):
+        if base:
+            self._base = base
+            self._metadata = base.metadata
+
+
+    def drop_all(self):
+        self.metadata.drop_all(self.session.bind)
+
+
+    def create_all(self):
+        self.metadata.create_all(self.session.bind)
+
+
+    def commit(self):
+        self.session.commit()
+
+
+    def get_table(self, tablename):
+        return self.metadata.tables.get(tablename)
 
 
     def get_model(self, tablename):
@@ -52,8 +89,7 @@ class Recorder(object):
 
         for c in self.base._decl_class_registry.values():
             if hasattr(c, '__tablename__') and c.__tablename__ == tablename:
-                self.model_cache[tablename] = c
-                return c
+                return self.model_cache.setdefault(tablename, c)
 
 
     def required(self, object_dict, required):
@@ -65,21 +101,19 @@ class Recorder(object):
 
 
     def insert(self, tablename, records):
-        t = self.base.metadata.tables.get(tablename)
+        t = self.get_table(tablename)
         if t is None:
-            print(self.base.metadata.tables.keys())
             raise Exception("No such table: '{0}'".format(tablename))
-        self.engine.execute(t.insert(), records)
 
+        self.session.bind.execute(t.insert(), records)
 
 
     def get_object(self, tablename, record_dict):
-        c = self.get_model(tablename)
-        if c is None:
-            logging.error("Table '{0}' is not exist!".format(tablename))
-            return []
+        t = self.get_table(tablename)
+        if t is None:
+            raise Exception("No such table: '{0}'".format(tablename))
 
-        rows = self.session.query(c).filter_by(**record_dict).all()
+        rows = self.session.query(t).filter_by(**record_dict).all()
         if rows:
             l = len(rows)
             if l > 1:
@@ -91,12 +125,10 @@ class Recorder(object):
     def reg_object(self, tablename, record_dict):
         c = self.get_model(tablename)
         if c is None:
-            logging.error("Table '{0}' is not exist!".format(tablename))
-            return []
+            raise Exception("No such table: '{0}'".format(tablename))
 
         record = c(**record_dict)
         self.session.add(record)
-        self.session.commit()
 
         return record
 
@@ -104,43 +136,41 @@ class Recorder(object):
     def reg_object1(self, tablename, record_dict, required=[]):
         c = self.get_model(tablename)
         if c is None:
-            logging.error("Table '{0}' is not exist!".format(tablename))
-            return []
+            raise Exception("No such table: '{0}'".format(tablename))
 
-        try:
-            rows = self.session.query(c).filter_by(**record_dict).all()
-            if rows:
-                l = len(rows)
-                record = rows[0]
-                if l > 1:
-                    logging.warning("Найдено {0} одинаковых записей в '{1}'!".format(l, tablename))
-                return record
+        if not required:
+            required = record_dict.keys()
 
-        except Exception as e:
-            self.exception(record_dict, e.message)
+        clause = {k: v for k, v in d.items() if k in required}
+        rows = self.session.query(c).filter_by(**clause).all()
+        if rows:
+            l = len(rows)
+            if l > 1:
+                logging.warning("Найдено {0} одинаковых записей в '{1}'!".format(l, tablename))
+
+            return rows[0]
 
         record = c(**record_dict)
         self.session.add(record)
-        self.session.commit()
 
         return record
 
 
     def debug(self, OBJ, msg):
         logging.debug(msg)
-    
-    
+
+
     def info(self, OBJ, msg):
         logging.info(msg)
-    
-    
+
+
     def warning(self, OBJ, msg):
         logging.warning(msg)
-    
-    
+
+
     def error(self, OBJ, msg, *args, **kargs):
         try:    msg = "" + msg
-        except: msg = repr(tb_msg)
+        except: msg = repr(msg)
 
         msg = """
 =====================
@@ -148,10 +178,10 @@ class Recorder(object):
     args: {1!r}
     kargs: {2!r}
 =====================\n\n""".format(msg, args, kargs)
-    
+
         logging.error(msg)
-    
-    
+
+
     def exception(self, OBJ, msg, *args, **kargs):
         try:    msg = "" + msg
         except: msg = repr(msg)
@@ -167,7 +197,7 @@ class Recorder(object):
     kargs: {2!r}
     {3}
 =====================\n\n""".format(msg, args, kargs, tb_msg)
-    
+
         logging.exception(msg)
 
 

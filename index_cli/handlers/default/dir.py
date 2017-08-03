@@ -5,60 +5,38 @@
 from __future__ import ( division, absolute_import,
                          print_function, unicode_literals )
 
-import os, time, logging
+import os
 
-from .file import preparing_file
+from .file import proceed_file
 
 
-def preparing_dir(filename, options):
+def preparing_dir(filename, options, status):
+    filenames_encoding = options.get('filenames_encoding', 'cp1251')
+
     try:
-        dir_dict = dict(name=filename)
-    except Exception, e:
-        logging.warning(filename)
-        dir_dict = dict(name=dirname.decode('cp1251'))
+        filename = unicode(filename)
+    except UnicodeDecodeError:
+        try:
+            filename = filename.decode(filenames_encoding)
+        except UnicodeDecodeError:
+            filename = unicode(filename, errors='replace')
 
-    return dir_dict
+    status.dir = filename
+    return dict(name=filename)
 
 
-def proceed_dir(dirname, options, RECORDER):
-    t1 = time.time()
+def proceed_dir(dirname, options, status, recorder):
+    dirs_filter = options.get('dirs_filter')
+    files_filter = options.get('files_filter')
 
-    dir_list = []
-    ndirs = 0
+    status.time
 
     for dirname, dirs, files in os.walk(dirname):
-        dir_dict = preparing_dir(dirname, options)
-        dir_list.append(dir_dict)
-        ndirs += 1
+        dir_dict = preparing_dir(dirname, options, status)
+        DIR = recorder.reg_object('dirs', dir_dict)
 
-    RECORDER.insert('dirs', dir_list)
+        for i in files:
+            filename = os.path.join(dirname, i)
+            FILE = proceed_file(filename, options, status, recorder, DIR)
 
-    t2 = time.time()
-    print("Время выполнения: {0}, кол-во директорий: {1}".format(t2-t1, ndirs))
-
-    c = RECORDER.get_model('dirs')
-    rows = RECORDER.session.query(c).all()
-
-    file_list = []
-    nfiles = 0
-
-    for i in rows:
-        dirname = i.name
-        try:
-            ldir = os.listdir(dirname)
-        except Exception as e:
-            logging.warning(["Access denied", dirname])
-            continue
-
-        for basename in sorted(ldir):
-            filename = os.path.join(dirname, basename)
-            if os.path.isfile(filename):
-                file_dict = preparing_file(filename, options, i)
-                if file_dict:
-                    file_list.append(file_dict)
-                    nfiles += 1
-
-    RECORDER.insert('files', file_list)
-
-    t3 = time.time()
-    print("Время выполнения: {0}, кол-во файлов: {1}".format(t3-t2, nfiles))
+    status.info("Processing time: {0}, dirs: {1}, files: {2}".format(status.time, status.dir, status.file))
