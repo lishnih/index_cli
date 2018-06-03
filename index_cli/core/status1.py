@@ -2,8 +2,8 @@
 # coding=utf-8
 # Stan 2015-06-05, 2017-08-02
 
-from __future__ import ( division, absolute_import,
-                         print_function, unicode_literals )
+from __future__ import (division, absolute_import,
+                        print_function, unicode_literals)
 
 import time
 
@@ -15,7 +15,6 @@ class Status(Logging):
     def __init__(self):
         self.reset()
 
-
     def reset(self, text=''):
         self.ndirs = self.nfiles = 0
         self.last_dir = ''
@@ -23,7 +22,6 @@ class Status(Logging):
         self.break_required = None
         self.message = text
         self._time = time.time()
-
 
     @property
     def message(self):
@@ -40,13 +38,11 @@ class Status(Logging):
                 message = "{0} и др. значения".format(message[0])
         self._message = message
 
-
     @property
     def time(self):
         t = self._time
         self._time = time.time()
         return self._time - t
-
 
     @property
     def dir(self):
@@ -56,7 +52,6 @@ class Status(Logging):
     def dir(self, filename):
         self.last_dir = filename
         self.ndirs += 1
-
 
     @property
     def file(self):

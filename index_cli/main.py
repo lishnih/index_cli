@@ -1,67 +1,43 @@
 #!/usr/bin/env python
 # coding=utf-8
-# Stan 2012-03-12, 2017-03-09
+# Stan 2012-03-12
 
-from __future__ import ( division, absolute_import,
-                         print_function, unicode_literals )
+from __future__ import (division, absolute_import,
+                        print_function, unicode_literals)
 
-import sys, os, importlib
+import sys
+import os
+from importlib import import_module
 
 from .core.backwardcompat import *
+from .core.db import getDbUri, openDbUri
 from .core.status1 import status1
+from .base import proceed
+from .models.slice_dir_file import Base
 
 
-def main(files, profile='default', options={}, status=status1):
+def main(files='', profile='default', options={}, status=status1):
     status.reset()
-    options['profile'] = profile
 
+    files = files or options.get('files')
+    profile = profile or options.get('profile')
 
     if not files:
-        status.warning("Files not specified!")
-        return
+        msg = "Files not specified!"
+        status.warning(msg)
+        return -1, msg
 
+    dburi = getDbUri(options)
+    if not dburi:
+        msg = "Database not specified!"
+        status.warning(msg)
+        return -1, msg
 
-    # Загружаем обработчик (handler)
-    handler = __package__ + '.handlers.' + profile
-    try:
-        handler_module = importlib.import_module(handler)
+    engine, session = openDbUri(dburi)
+    Base.metadata.create_all(session.bind)
 
-    except Exception as e:
-        status.exception("Error in the handler", profile, e)
-        return
+    # Выполняем
+    code, msg = proceed(files, options, status, session)
 
-
-    # Обработчик имеет точку входа 'proceed'
-    if not hasattr(handler_module, 'proceed'):
-        status.error("Function 'proceed' is missing in the handler", profile)
-        return
-
-
-    if hasattr(handler_module, 'opening'):
-        try:
-            runtime = handler_module.opening(__package__, options, status)
-
-        except Exception as e:
-            status.exception("Error during opening", profile, e)
-            return
-
-    else:
-        runtime = {}
-        status.debug("Function 'opening' is missing in the handler", profile)
-
-
-    # Обработка
-    if not isinstance(files, collections_types):
-        files = [files]
-
-    for i in files:
-        try:
-            handler_module.proceed(i, options, status, **runtime)
-        except Exception as e:
-            status.exception("Error during handle the file", profile, e)
-
-
-    if hasattr(handler_module, 'closing'):
-        handler_module.closing(options, status, **runtime)
-    else:
-        status.debug("Function 'closing' is missing in the handler", profile)
+    status.message = "Finished!"
+    return code, msg
