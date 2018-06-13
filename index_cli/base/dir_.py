@@ -7,6 +7,7 @@ from __future__ import (division, absolute_import,
 
 import os
 
+from ..core.backwardcompat import *
 from ..models.slice_dir_file import Dir
 
 
@@ -33,13 +34,22 @@ def proceed_dirs(dirname, options, status, session, SLICE):
     status.time
 
     dirs_filter = options.get('dirs_filter')
-    files_filter = options.get('files_filter')
+    loops = options.get('loops', 10000)
 
     dir_list = []
+    amount = 0
+
     for dirname, dirs, files in os.walk(dirname):
+        if amount == loops:
+            session.bind.execute(Dir.__table__.insert(), dir_list)
+            dir_list = []
+            amount = 0
+
         dir_dict = preparing_dir(dirname, options, status, SLICE)
         dir_list.append(dir_dict)
+        amount += 1
 
     session.bind.execute(Dir.__table__.insert(), dir_list)
+    dir_list = []
 
     status.info("Scan time: {0}, dirs: {1}".format(status.time, status.dir))

@@ -8,6 +8,7 @@ from __future__ import (division, absolute_import,
 import os
 import time
 
+from ..core.backwardcompat import *
 from ..models.slice_dir_file import Slice, Dir, File
 
 
@@ -50,23 +51,33 @@ def preparing_file(filename, options, status, DIR):
 def proceed_files(options, status, session, SLICE):
     status.time
 
-    loops = options.get('loops', 1000)
+    files_filter = options.get('files_filter')
+    loops = options.get('loops', 10000)
 
     file_list = []
+    amount = 0
+
     rows = session.query(Dir, Slice).join(Slice).filter_by(name=SLICE.name, active=1, hash=SLICE.hash).all()
-    for i, j in rows:
-        dirname = i.name
+    for DIR, SLICE in rows:
+        dirname = DIR.name
         try:
             ldir = os.listdir(dirname)
         except OSError:
             status.warning("Access denied", dirname)
         else:
             for basename in sorted(ldir):
+                if amount == loops:
+                    session.bind.execute(File.__table__.insert(), file_list)
+                    file_list = []
+                    amount = 0
+
                 filename = os.path.join(dirname, basename)
                 if os.path.isfile(filename):
-                    file_dict = preparing_file(filename, options, status, i)
+                    file_dict = preparing_file(filename, options, status, DIR)
                     file_list.append(file_dict)
+                    amount += 1
 
     session.bind.execute(File.__table__.insert(), file_list)
+    file_list = []
 
     status.info("Scan time: {0}, files: {1}".format(status.time, status.file))

@@ -49,7 +49,6 @@ def openDbUri(dburi, session=None):
                 os.makedirs(dirname)
 
     if not session:
-        session = scoped_session(sessionmaker())
-        session.configure(bind=engine)
+        session = scoped_session(sessionmaker(bind=engine))
 
     return engine, session

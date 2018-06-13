@@ -5,12 +5,9 @@
 from __future__ import (division, absolute_import,
                         print_function, unicode_literals)
 
-import os
-import time
-
 from sqlalchemy.sql import text
 
-from ..models.slice_dir_file import Slice, Dir, File
+from ..models.slice_dir_file import Slice
 
 
 def preparing_parse(filename, options, status, DIR):

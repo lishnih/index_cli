@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # coding=utf-8
-# Stan 2015-06-05, 2017-08-02
+# Stan 2015-06-05
 
 from __future__ import (division, absolute_import,
                         print_function, unicode_literals)
 
 import time
 
-from .backwardcompat import *
 from .logging_class import Logging
 
 
@@ -16,7 +15,8 @@ class Status(Logging):
         self.reset()
 
     def reset(self, text=''):
-        self.ndirs = self.nfiles = 0
+        self.ndirs = 0
+        self.nfiles = 0
         self.last_dir = ''
         self.last_file = ''
         self.break_required = None
@@ -35,7 +35,7 @@ class Status(Logging):
             elif len(message) == 1:
                 message = message[0]
             else:
-                message = "{0} и др. значения".format(message[0])
+                message = "{0} and more...".format(message[0])
         self._message = message
 
     @property
@@ -61,6 +61,3 @@ class Status(Logging):
     def file(self, filename):
         self.last_file = filename
         self.nfiles += 1
-
-
-status1 = Status()

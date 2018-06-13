@@ -6,7 +6,6 @@ from __future__ import (division, absolute_import,
                         print_function, unicode_literals)
 
 import sys
-import os
 from datetime import datetime
 
 from sqlalchemy import Column, Integer, Float, String, Text, DateTime, PickleType, ForeignKey
@@ -29,27 +28,27 @@ else:
 # String = String(length=255)
 
 
-class Slice(Base, aStr):                  # rev. 20180601
+class Slice(Base, aStr):        # rev. 20180601
     __tablename__ = 'slices'
     __table_args__ = {'mysql_engine': 'MyISAM', 'mysql_charset': 'utf8'}
 
     id = Column(Integer, primary_key=True)
 
-    name = Column(String)                 # Имя обработчика
-    created = Column(Integer, default=datetime.utcnow)  # Время создания
-    active = Column(Integer, default=1)   # Активная обработка
-    hash = Column(String)                 # Хэш
-    extras = Column(Text)                 # Параметры
+    name = Column(String, nullable=False)                 # Имя обработчика
+    created = Column(Integer, nullable=False, default=datetime.utcnow)  # Время создания
+    active = Column(Integer, nullable=False, default=1)   # Активная обработка
+    hash = Column(String, nullable=False, default='')     # Хэш
+    extras = Column(Text, nullable=False, default='')     # Параметры
 
 #   def __init__(self, **kargs):
-#       kargs_reg = dict((key, value) for key, value in kargs.items() if hasattr(self, key))
+#       kargs_reg = {key: value for key, value in kargs.items() if hasattr(self, key)}
 #       Base.__init__(self, **kargs_reg)
 
     def __unicode__(self):
         return "<Slice '{0}' (id:{1})>".format(self.name, self.id)
 
 
-class Dir(Base, aStr):                    # rev. 20180601
+class Dir(Base, aStr):          # rev. 20180601
     __tablename__ = 'dirs'
     __table_args__ = {'mysql_engine': 'MyISAM', 'mysql_charset': 'utf8'}
 
@@ -57,18 +56,18 @@ class Dir(Base, aStr):                    # rev. 20180601
     _slices_id = Column(Integer, ForeignKey('slices.id', onupdate='CASCADE', ondelete='CASCADE'))
     _slice = relationship(Slice, backref=backref(__tablename__, cascade='all, delete, delete-orphan'))
 
-    name = Column(String)                 # Имя директории
-    location = Column(String)             # Имя компьютера
+    name = Column(String, nullable=False)                         # Имя директории
+    location = Column(String, nullable=False, server_default='')  # Имя компьютера
 
 #   def __init__(self, **kargs):
-#       kargs_reg = dict((key, value) for key, value in kargs.items() if hasattr(self, key))
+#       kargs_reg = {key: value for key, value in kargs.items() if hasattr(self, key)}
 #       Base.__init__(self, **kargs_reg)
 
     def __unicode__(self):
         return "<Directory '{0}' (id:{1})>".format(self.name, self.id)
 
 
-class File(Base, aStr):                   # rev. 20170503
+class File(Base, aStr):         # rev. 20170503
     __tablename__ = 'files'
     __table_args__ = {'mysql_engine': 'MyISAM', 'mysql_charset': 'utf8'}
 
@@ -78,35 +77,36 @@ class File(Base, aStr):                   # rev. 20170503
 #   _parses = relationship(Parse, secondary=RS_Parse.__table__,
 #                                 backref=backref('_files', lazy='dynamic'))
 
-    name = Column(String)                 # Имя файла
-    ext = Column(String)                  # Расширение файла
-    size = Column(Integer)                # Размер
-    date = Column(String)                 # Время модификации
-    _mtime = Column(Float)                # Время модификации
+    name = Column(String, nullable=False)                       # Имя файла
+    ext = Column(String, nullable=False, server_default='')     # Расширение файла
+    size = Column(Integer, nullable=False, server_default='0')  # Размер
+    date = Column(String, nullable=False, server_default='')    # Время модификации
+    _mtime = Column(Float, nullable=False, server_default='0')  # Время модификации
 
 #   def __init__(self, **kargs):
-#       kargs_reg = dict((key, value) for key, value in kargs.items() if hasattr(self, key))
+#       kargs_reg = {key: value for key, value in kargs.items() if hasattr(self, key)}
 #       Base.__init__(self, **kargs_reg)
 
     def __unicode__(self):
         return "<File '{0}' (id:{1})>".format(self.name, self.id)
 
 
-class Parse(Base, aStr):                  # Rev. 2018-06-03
+class Parse(Base, aStr):        # Rev. 2018-06-04
     __tablename__ = 'parses'
     __table_args__ = {'mysql_engine': 'MyISAM', 'mysql_charset': 'utf8'}
 
     id = Column(Integer, primary_key=True)
 
-    md5 = Column(String)                  # MD5
-    sha1 = Column(String)                 # SHA1
-    last = Column(Integer)                # Предыдущая обработка
+    md5 = Column(String, nullable=False, server_default='')       # MD5 файла
+    sha256 = Column(String, nullable=False, server_default='')    # SHA256 файла
+    status = Column(Integer, nullable=False, server_default='0')  # Статус обработки
+    last = Column(Integer, nullable=False, server_default='0')    # Предыдущая обработка
 
     def __unicode__(self):
         return "<Parse (id:{0})>".format(self.id)
 
 
-class RS_Parse(Base, aStr):               # Rev. 2018-06-03
+class RS_Parse(Base, aStr):     # Rev. 2018-06-03
     __tablename__ = 'rs_file_parses'
     __table_args__ = {'mysql_engine': 'MyISAM', 'mysql_charset': 'utf8'}
 
@@ -130,7 +130,7 @@ File._parses = relationship(Parse, secondary=RS_Parse.__table__,
 # p._files.append(f)
 
 
-class Error(Base, aStr):                  # rev. 20180531
+class Error(Base, aStr):        # rev. 20180605
     __tablename__ = 'errors'
     __table_args__ = {'mysql_engine': 'MyISAM', 'mysql_charset': 'utf8'}
 
@@ -138,12 +138,13 @@ class Error(Base, aStr):                  # rev. 20180531
     _files_id = Column(Integer, ForeignKey('files.id', onupdate="CASCADE", ondelete="CASCADE"))
     _file = relationship(File, backref=backref(__tablename__, cascade='all, delete, delete-orphan'))
 
-    name = Column(String)                 # Сообщение
-    type = Column(String)                 # Тип
+    name = Column(String, nullable=False)                         # Сообщение
+    type = Column(String, nullable=False, server_default='INFO')  # Тип
+    spoiler = Column(Text, nullable=False, server_default='')     # Спойлер
+    created = Column(Integer, nullable=False, default=datetime.utcnow)  # Время создания
 
-#   def __init__(self, **kargs):
-#       kargs_reg = dict((key, value) for key, value in kargs.items() if hasattr(self, key))
-#       Base.__init__(self, **kargs_reg)
+    def __init__(self, name, type=None, id=None, spoiler=None):
+        Base.__init__(self, name=name, type=type, _files_id=id, spoiler=spoiler)
 
     def __unicode__(self):
         return "<Error '{0}' '{1}' (id:{2})>".format(self.name, self.type, self.id)

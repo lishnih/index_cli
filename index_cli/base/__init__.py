@@ -12,18 +12,19 @@ import json
 
 from .dir_ import preparing_dir, proceed_dirs
 from .file import preparing_file, proceed_files
-from .parse import proceed_parses
+from .parse1 import proceed_parses
+from .parse2 import parse_files
 
 from ..models.slice_dir_file import Slice, Dir, File, Parse, Error
 
 
-def proceed(filename, options, status, session):
+def proceed(filename, options, status, session, func=None):
     os.stat_float_times(False)
 
     check = options.get('check')
     extras = json.dumps(options)
     if check:
-        hash = options.get(check)
+        hash = options.get(check, '')
     else:
         m = hashlib.md5()
         m.update(extras)
@@ -39,10 +40,11 @@ def proceed(filename, options, status, session):
     if os.path.isdir(filename):
         status.info("Processing directory", filename)
 
-        # Dir
+        # Dirs / files / parses
         proceed_dirs(filename, options, status, session, SLICE)
         proceed_files(options, status, session, SLICE)
         proceed_parses(options, status, session, SLICE)
+        parse_files(options, status, session, SLICE, func)
 
     elif os.path.isfile(filename):
         status.info("Processing file", filename)
@@ -60,8 +62,12 @@ def proceed(filename, options, status, session):
         session.add(FILE)
         session.commit()
 
+        # Parse
+        proceed_parses(options, status, session, SLICE)
+        parse_files(options, status, session, SLICE, func)
+
     else:
         status.warning("Directory/file not found", filename)
-        return -1, "Directory/file not found!"
+        return -1
 
-    return 0, "Finished successfully!"
+    return 0
