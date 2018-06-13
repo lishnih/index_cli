@@ -15,10 +15,10 @@ from .file import preparing_file, proceed_files
 from .parse1 import proceed_parses
 from .parse2 import parse_files
 
-from ..models.slice_dir_file import Slice, Dir, File, Parse, Error
+from ..models.slice_dir_file import Slice, Dir, File, Parse
 
 
-def proceed(filename, options, status, session, func=None):
+def proceed(filename, options, recorder):
     os.stat_float_times(False)
 
     check = options.get('check')
@@ -31,43 +31,43 @@ def proceed(filename, options, status, session, func=None):
         hash = m.hexdigest()
 
     slice_name = options.get('name', 'none')
-    session.query(Slice).filter_by(name=slice_name, active=1, hash=hash).update({"active": 0})
+    recorder.query(Slice).filter_by(name=slice_name, active=1, hash=hash).update({"active": 0})
 
     SLICE = Slice(name=slice_name, hash=hash, extras=extras)
-    session.add(SLICE)
-    session.commit()
+    recorder.add(SLICE)   # При добавлении объекта с помощью add, объект кешируется в recorder
+    recorder.commit()
 
     if os.path.isdir(filename):
-        status.info("Processing directory", filename)
+        recorder.info("Processing directory", filename)
 
         # Dirs / files / parses
-        proceed_dirs(filename, options, status, session, SLICE)
-        proceed_files(options, status, session, SLICE)
-        proceed_parses(options, status, session, SLICE)
-        parse_files(options, status, session, SLICE, func)
+        proceed_dirs(filename, options, recorder)
+        proceed_files(options, recorder)
+        proceed_parses(options, recorder)
+        parse_files(options, recorder)
 
     elif os.path.isfile(filename):
-        status.info("Processing file", filename)
+        recorder.info("Processing file", filename)
 
         # Dir
         dirname = os.path.dirname(filename)
-        dir_dict = preparing_dir(dirname, options, status, SLICE)
+        dir_dict = preparing_dir(dirname, options, recorder)
         DIR = Dir(**dir_dict)
-        session.add(DIR)
-        session.commit()
+        recorder.add(DIR)
+        recorder.commit()
 
         # File
-        file_dict = preparing_file(filename, options, status, DIR)
+        file_dict = preparing_file(filename, options, recorder)
         FILE = File(**file_dict)
-        session.add(FILE)
-        session.commit()
+        recorder.add(FILE)
+        recorder.commit()
 
         # Parse
-        proceed_parses(options, status, session, SLICE)
-        parse_files(options, status, session, SLICE, func)
+        proceed_parses(options, recorder)
+        parse_files(options, recorder)
 
     else:
-        status.warning("Directory/file not found", filename)
+        recorder.warning("Directory/file not found", filename)
         return -1
 
     return 0

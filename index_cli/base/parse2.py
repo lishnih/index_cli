@@ -9,11 +9,10 @@ import os
 from Queue import Queue
 from threading import Thread
 import hashlib
-import traceback
 
 from sqlalchemy.sql import text
 
-from ..models.slice_dir_file import Parse, Error
+from ..models.slice_dir_file import Parse
 
 
 q = Queue(maxsize=0)
@@ -39,18 +38,18 @@ def chunks(lst, chunk_size, lenght=None):
     return [lst[i:i+chunk_size] for i in range(0, lenght, chunk_size)]
 
 
-def do_stuff(q, options, status, session, func):
+def do_stuff(q, options, recorder):
     while True:
         row = q.get()
-        do_stuff_row(row, options, status, session, func)
+        do_stuff_row(row, options, recorder)
         q.task_done()
 
 
-def do_stuff_row(row, options, status, session, func):
+def do_stuff_row(row, options, recorder):
     filename = os.path.join(row.dir_name, row.file_name)
     if not os.path.isfile(filename):
-        status.warning("File not found:", filename)
-        session.query(Parse).filter_by(id=row.parse_id).update({'status': -1})
+        recorder.warning("File not found:", filename)
+        recorder.query(Parse).filter_by(id=row.parse_id).update({'status': -1})
 
     else:
         try:
@@ -59,23 +58,28 @@ def do_stuff_row(row, options, status, session, func):
         except MemoryError:
             md5, sha256 = '-1', '-1'
 
-        status.debug("Proceed file:", filename)
+        recorder.debug(filename)
         try:
-            er = func(filename, row.parse_id, options, status, session)
+            if recorder.opening_func:
+                recorder.opening_func(options, recorder)
+            er = recorder.func(filename, row.parse_id, options, recorder)
+            if recorder.closing_func:
+                recorder.closing_func(options, recorder)
         except Exception as e:
-            session.add(Error(repr(e), 'EXCEPTION', row.file_id, traceback.format_exc()))
+            recorder.exception(repr(e), parse_id=row.parse_id)
             er = -2
 
-        session.query(Parse).filter_by(id=row.parse_id).update({'md5': md5, 'sha256': sha256, 'status': er})
+        recorder.query(Parse).filter_by(id=row.parse_id).update({'md5': md5, 'sha256': sha256, 'status': er})
 
-    session.commit()
+    recorder.commit()
 
 
-def parse_files(options, status, session, SLICE, func=None):
-    status.time
+def parse_files(options, recorder):
+    recorder.time
 
-    status.debug("Выборка необработанных файлов и их обработка")
+    recorder.info("Selection of unparsed files and parsing...")
 
+    SLICE = recorder.get_slice()
     sql = """
 SELECT
   count(*)
@@ -88,8 +92,8 @@ JOIN parses ON rs_file_parses._parses_id = parses.id
 WHERE
   slices.id == {0}
 """.format(SLICE.id)
-    row = session.execute(sql.format(SLICE.id))
-    status.info("Всего файлов: {0}".format(row.scalar()))
+    row = recorder.execute(sql.format(SLICE.id))
+    recorder.info("Files total: {0}".format(row.scalar()))
 
     sql = """
 SELECT
@@ -103,8 +107,8 @@ JOIN parses ON rs_file_parses._parses_id = parses.id
 WHERE
   slices.id == {0} and status > 0
 """.format(SLICE.id)
-    row = session.execute(sql.format(SLICE.id))
-    status.info("Обработанных файлов: {0}".format(row.scalar()))
+    row = recorder.execute(sql.format(SLICE.id))
+    recorder.info("Files parsed: {0}".format(row.scalar()))
 
     sql = """
 SELECT
@@ -118,8 +122,8 @@ JOIN parses ON rs_file_parses._parses_id = parses.id
 WHERE
   slices.id == {0} and status < 0
 """.format(SLICE.id)
-    row = session.execute(sql.format(SLICE.id))
-    status.info("Обработанных файлов с ошибками: {0}".format(row.scalar()))
+    row = recorder.execute(sql.format(SLICE.id))
+    recorder.info("Files parsed with errors: {0}".format(row.scalar()))
 
     sql = """
 SELECT
@@ -133,12 +137,12 @@ JOIN parses ON rs_file_parses._parses_id = parses.id
 WHERE
   slices.id == {0} and status == 0
 """.format(SLICE.id)
-    row = session.execute(sql.format(SLICE.id))
-    status.info("Необработанных файлов: {0}".format(row.scalar()))
+    row = recorder.execute(sql.format(SLICE.id))
+    recorder.info("Files unparsed: {0}".format(row.scalar()))
 
-    if not func:
-        status.info("Основной обработчик не указан, завершаем обработку")
-        status.info("Processing time: {0}".format(status.time))
+    if not recorder.func:
+        recorder.info("Primary handler omitted, finish parsing")
+        recorder.info("Processing time: {0}".format(recorder.time))
         return
 
     sql = """
@@ -163,16 +167,16 @@ LIMIT 0, {1}
     threads = int(options.get('threads', 0))
 
     if threads:
-        status.debug("Threads: {0}".format(threads))
+        recorder.info("Parsing with {0} threads...".format(threads))
 
         for i in range(threads):
-            worker = Thread(target=do_stuff, args=(q, options, status, session, func))
+            worker = Thread(target=do_stuff, args=(q, options, recorder))
             worker.setDaemon(True)
             worker.start()
 
         empty = False
         while not empty:
-            rows = session.execute(sql.format(SLICE.id, limit))
+            rows = recorder.execute(sql.format(SLICE.id, limit))
             rows = [i for i in rows]
 
             empty = True
@@ -184,22 +188,22 @@ LIMIT 0, {1}
                 q.join()
 
             if not empty:
-                status.debug("Processed {0} files".format(len(bundle)))
+                recorder.info("Processed {0} files".format(len(bundle)))
 
     else:
-        status.debug("No threads")
+        recorder.info("Parsing without threads...")
 
         empty = False
         while not empty:
-            rows = session.execute(sql.format(SLICE.id, limit))
+            rows = recorder.execute(sql.format(SLICE.id, limit))
             rows = [i for i in rows]
 
             empty = True
             for row in rows:
                 empty = False
-                do_stuff_row(row, options, status, session, func)
+                do_stuff_row(row, options, recorder)
 
             if not empty:
-                status.info("Processed {0} files".format(len(rows)))
+                recorder.info("Processed {0} files".format(len(rows)))
 
-    status.info("Processing time: {0}".format(status.time))
+    recorder.info("Processing time: {0}".format(recorder.time))

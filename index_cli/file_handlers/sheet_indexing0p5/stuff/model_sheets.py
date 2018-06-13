@@ -11,7 +11,7 @@ from sqlalchemy import Column, Integer, Float, String, Text, DateTime, PickleTyp
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, relationship
 
-from ...models.slice_dir_file import Base, aStr, Parse, String
+from ....models.slice_dir_file import Base, aStr, Parse, String
 
 
 class Sheet(Base, aStr):        # rev. 20180605

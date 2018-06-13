@@ -23,10 +23,9 @@ class Logging(object):
     def warning(self, *msg, **kargs):
         once = kargs.get('once')
         if once:
-            if once not in self.buffer:
-                self.buffer.append(once)
-            else:
+            if once in self.buffer:
                 return
+            self.buffer.append(once)
 
         for i in msg:
             logging.warning(i)

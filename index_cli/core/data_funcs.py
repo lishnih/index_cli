@@ -2,35 +2,31 @@
 # coding=utf-8
 # Stan 2012-04-06
 
-from __future__ import ( division, absolute_import,
-                         print_function, unicode_literals )
+from __future__ import (division, absolute_import,
+                        print_function, unicode_literals)
 
 import re
+import fnmatch
 
-from .backwardcompat import *
+try:
+    from .backwardcompat import *
+except:
+    from backwardcompat import *
 
 
 def get_list(val):
-    if val == None:
+    if val is None:
         return []
     elif isinstance(val, (list, tuple)):
         return val
     else:
         return [val]
 
-    return []
 
-
-def get_str_sequence(sequence_str):
+def get_str_sequence(sequence_str, delimiter=','):
     str_sequence = []
 
-#   sequence_list = sequence_str.split(',')
-#   for i in sequence_list:
-#       if i:
-#           i = i.strip()
-#           str_sequence.append(i)
-
-    sequence_list = re.findall('(")?(?(1)(.*?)|([^",]+))((?(1)"))[, ]*', sequence_str)
+    sequence_list = re.findall('(")?(?(1)(.*?)|([^"{0}]+))((?(1)"))[{0} ]*'.format(delimiter), sequence_str)
     for q1, i1, i2, q2 in sequence_list:
         i = i2.strip() if i2 else i1
         str_sequence.append(i)
@@ -39,7 +35,7 @@ def get_str_sequence(sequence_str):
 
 
 def get_int_sequence(sequence_str, from_list=None):
-    from_len = None if from_list == None else len(from_list)
+    from_len = None if from_list is None else len(from_list)
 
     int_sequence = []
     str_sequence = get_str_sequence(sequence_str)
@@ -68,12 +64,12 @@ def get_int_sequence(sequence_str, from_list=None):
                     step  = int(step)     if step  else 1
 
                     if stop <= 0:
-                        if from_len == None:
+                        if from_len is None:
                             raise ValueError("Impossible to calculate the count of array! Array is not defined!")
                         stop = from_len - stop - 1
 
             if res:
-                if stop == None:
+                if stop is None:
                     raise ValueError("Impossible to calculate the count of array! Array is not defined!")
 
                 for i in range(start, stop, step):
@@ -88,42 +84,60 @@ def get_int_sequence(sequence_str, from_list=None):
     return int_sequence
 
 
-def filter_match(name, filter, index=None):
-    if filter == None:
-        return True
+def filter_match(name, filter_, empty=True, index=None):
+    if filter_ is None:
+        return empty
 
-    elif isinstance(filter, string_types):
+    elif isinstance(filter_, string_types):
 
         # Строка вида [i0, i1] интерпретируется как массив индексов
-        res = re.match('^\[(.*)\]$', filter)
+        res = re.match('^\[(.*)\]$', filter_)
         if res:
-            filter = res.group(1)
-            index_list = get_int_sequence(filter)
+            filter_ = res.group(1)
+            index_list = get_int_sequence(filter_)
 
-            if index == None:
+            if index is None:
                 assert None, 'index required!'
                 return False
 
             return index in index_list
 
         # Строка вида (name0, name1) - как массив имён
-        res = re.match('^\((.*)\)$', filter)
+        res = re.match('^\((.*)\)$', filter_)
         if res:
-            filter = res.group(1)
-            names_list = get_str_sequence(filter)
+            filter_ = res.group(1)
+            names_list = get_str_sequence(filter_)
 
             return name in names_list
 
         # Строка вида /patt/ - как шаблон
-        res = re.match('^/(.*)/$', filter)
+        res = re.match('^/(.*)/$', filter_)
         if res:
-            filter = res.group(1)
+            filter_ = res.group(1)
 
-            return True if re.match(filter, name) else False
+            return True if re.match(filter_, name) else False
 
-        # Все остальные строки принимаются как есть
-        return filter == name
+        # Все остальные строки принимаются как набор шаблонов fnmatch
+        # разделённых точкой с запятой
+        seq = get_str_sequence(filter_, delimiter=';')
+        for i in seq:
+            if fnmatch.fnmatch(name, i):
+                return True
+        return False
 
-    elif isinstance(filter, list):
+    elif isinstance(filter_, (tuple, list)):
 
-        return name in filter
+        return name in filter_
+
+
+if __name__ == '__main__':
+    print(get_list('string'))
+    print(get_str_sequence('"a123", b456'))
+    print(get_int_sequence('1-5, 10-20'))
+    print(get_int_sequence('1-5, 10-30:2'))
+    print(get_int_sequence('1, 2, 3, 4'))
+    print(filter_match('string', '[1-4]', 1))
+    print(filter_match('name1', '(name1, name2)'))
+    print(filter_match('name1', '/name\d/'))
+    print(filter_match('file.xls', '*.xls; *.xlsx; *.xlsm'))
+    print(filter_match('file.jpg', '*.xls; *.xlsx; *.xlsm'))

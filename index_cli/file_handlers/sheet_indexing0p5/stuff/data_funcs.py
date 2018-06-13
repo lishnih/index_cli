@@ -7,7 +7,10 @@ from __future__ import (division, absolute_import,
 
 import re
 
-from .backwardcompat import *
+try:
+    from .backwardcompat import *
+except:
+    from backwardcompat import *
 
 
 def get_list(val):
@@ -18,17 +21,9 @@ def get_list(val):
     else:
         return [val]
 
-    return []
-
 
 def get_str_sequence(sequence_str):
     str_sequence = []
-
-#   sequence_list = sequence_str.split(',')
-#   for i in sequence_list:
-#       if i:
-#           i = i.strip()
-#           str_sequence.append(i)
 
     sequence_list = re.findall('(")?(?(1)(.*?)|([^",]+))((?(1)"))[, ]*', sequence_str)
     for q1, i1, i2, q2 in sequence_list:
@@ -127,3 +122,14 @@ def filter_match(name, filter, index=None):
     elif isinstance(filter, list):
 
         return name in filter
+
+
+if __name__ == '__main__':
+    print(get_list('string'))
+    print(get_str_sequence('"a123", b456'))
+    print(get_int_sequence('1-5, 10-20'))
+    print(get_int_sequence('1-5, 10-30:2'))
+    print(get_int_sequence('1, 2, 3, 4'))
+    print(filter_match('string', '[1-4]', 1))
+    print(filter_match('name1', '(name1, name2)'))
+    print(filter_match('name1', '/name\d/'))

@@ -5,15 +5,19 @@
 from __future__ import (division, absolute_import,
                         print_function, unicode_literals)
 
-from .backwardcompat import *
-from .sheet_funcs import get_value_type
-
 
 def proceed_sheet(sh, i=None, options={}):
     for y in range(sh.nrows):
-        for x in range(sh.ncols):
-            value, type = get_value_type(sh, y, x)
+        values_y = sh.row_values(y)
+        for x, value in enumerate(values_y):
             if value:
+                if isinstance(value, int):    # Cell errors
+                    type = 10
+                elif isinstance(value, float):
+                    type = 12
+                else:
+                    type = 11
+
                 yield dict(
                     _sheet_name = sh.name,
                     value = value,

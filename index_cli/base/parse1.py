@@ -10,7 +10,7 @@ from sqlalchemy.sql import text
 from ..models.slice_dir_file import Slice
 
 
-def preparing_parse(filename, options, status, DIR):
+def preparing_parse(filename, options, recorder, DIR):
     return {
         '_dirs_id': DIR.id,
         'name': basename,
@@ -21,19 +21,20 @@ def preparing_parse(filename, options, status, DIR):
     }
 
 
-def proceed_parses(options, status, session, SLICE):
-    status.time
+def proceed_parses(options, recorder):
+    recorder.time
 
-    row = session.query(Slice).filter_by(name=SLICE.name, active=0, hash=SLICE.hash).\
+    SLICE = recorder.get_slice()
+    row = recorder.query(Slice).filter_by(name=SLICE.name, active=0, hash=SLICE.hash).\
                   order_by(text('created desc')).first()
     previous = row.id if row else None
 
-    status.debug("Предыдущая обработка: {0}".format(previous))
-    status.debug("Текущая обработка: {0}".format(SLICE.id))
+    recorder.info("Previous slice id: {0}".format(previous))
+    recorder.info("Current slice id: {0}".format(SLICE.id))
 
     if previous is None:
-        status.debug("Создание parses (previous is None)")
-        session.execute("""
+        recorder.info("Creating parses (previous slice is None)...")
+        recorder.execute("""
 INSERT INTO parses(id)
   SELECT
     files.id
@@ -45,8 +46,8 @@ INSERT INTO parses(id)
     slices.id == {0}
 """.format(SLICE.id))
 
-        status.debug("Создание rs_file_parses (previous is None)")
-        session.execute("""
+        recorder.info("Creating rs_file_parses (previous slice is None)...")
+        recorder.execute("""
 INSERT INTO rs_file_parses(_files_id, _parses_id)
   SELECT
     files.id, files.id
@@ -58,11 +59,11 @@ INSERT INTO rs_file_parses(_files_id, _parses_id)
     slices.id == {0}
 """.format(SLICE.id))
 
-        session.commit()
+        recorder.commit()
 
     else:
-        status.debug("Дублирование rs_file_parses для неизменённых файлов")
-        session.execute("""
+        recorder.info("Duplication rs_file_parses for unchanged files...")
+        recorder.execute("""
 INSERT INTO rs_file_parses(_files_id, _parses_id)
 
   SELECT current_id, parse_id FROM (
@@ -101,10 +102,10 @@ INSERT INTO rs_file_parses(_files_id, _parses_id)
   ON last_id == file_id
 """.format(previous, SLICE.id))
 
-        session.commit()
+        recorder.commit()
 
-        status.debug("Создание parses для файлов оставшихся без parses")
-        session.execute("""
+        recorder.info("Creating parses for new files...")
+        recorder.execute("""
 INSERT INTO parses(id)
   SELECT
     files.id
@@ -117,10 +118,10 @@ INSERT INTO parses(id)
     slices.id == {0} and _parses_id is NULL
 """.format(SLICE.id))
 
-        session.commit()
+        recorder.commit()
 
-        status.debug("Создание rs_file_parses для файлов оставшихся без parses")
-        session.execute("""
+        recorder.info("Creating rs_file_parses for new files...")
+        recorder.execute("""
 INSERT INTO rs_file_parses(_files_id, _parses_id)
   SELECT
     files.id, files.id
@@ -133,6 +134,6 @@ INSERT INTO rs_file_parses(_files_id, _parses_id)
     slices.id == {0} and _parses_id is NULL
 """.format(SLICE.id))
 
-        session.commit()
+        recorder.commit()
 
-    status.info("Preparing time: {0}".format(status.time))
+    recorder.info("Preparing time: {0}".format(recorder.time))

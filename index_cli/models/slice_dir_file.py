@@ -130,21 +130,24 @@ File._parses = relationship(Parse, secondary=RS_Parse.__table__,
 # p._files.append(f)
 
 
-class Error(Base, aStr):        # rev. 20180605
+class Error(Base, aStr):        # rev. 20180612
     __tablename__ = 'errors'
     __table_args__ = {'mysql_engine': 'MyISAM', 'mysql_charset': 'utf8'}
 
     id = Column(Integer, primary_key=True)
-    _files_id = Column(Integer, ForeignKey('files.id', onupdate="CASCADE", ondelete="CASCADE"))
-    _file = relationship(File, backref=backref(__tablename__, cascade='all, delete, delete-orphan'))
+    _slices_id = Column(Integer, ForeignKey('slices.id', onupdate='CASCADE', ondelete='CASCADE'))
+    _slice = relationship(Slice, backref=backref(__tablename__, cascade='all, delete, delete-orphan'))
+    _parses_id = Column(Integer, ForeignKey('parses.id', onupdate="CASCADE", ondelete="CASCADE"))
+    _parse = relationship(Parse, backref=backref(__tablename__, cascade='all, delete, delete-orphan'))
 
     name = Column(String, nullable=False)                         # Сообщение
     type = Column(String, nullable=False, server_default='INFO')  # Тип
-    spoiler = Column(Text, nullable=False, server_default='')     # Спойлер
+    target = Column(String, nullable=False, server_default='')    # Место, где возникла ошибка
+    traceback = Column(Text, nullable=False, server_default='')   # Traceback
     created = Column(Integer, nullable=False, default=datetime.utcnow)  # Время создания
 
-    def __init__(self, name, type=None, id=None, spoiler=None):
-        Base.__init__(self, name=name, type=type, _files_id=id, spoiler=spoiler)
+    def __init__(self, name, type=None, slice_id=None, parse_id=None, target=None, traceback=None):
+        Base.__init__(self, name=name, type=type, _slices_id=slice_id, _parses_id=parse_id, target=target, traceback=traceback)
 
     def __unicode__(self):
         return "<Error '{0}' '{1}' (id:{2})>".format(self.name, self.type, self.id)

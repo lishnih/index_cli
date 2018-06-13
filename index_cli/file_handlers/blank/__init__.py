@@ -5,5 +5,5 @@ from __future__ import (division, absolute_import,
                         print_function, unicode_literals)
 
 
-def do_stuff_file(filename, parse_id, options, status, session):
+def proceed(filename, parse_id, options, recorder):
     return 1

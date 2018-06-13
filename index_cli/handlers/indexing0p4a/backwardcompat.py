@@ -7,8 +7,6 @@
 import sys
 
 
-console_encoding = sys.__stdout__.encoding
-
 if sys.version_info >= (3,):
     from urllib.error import URLError, HTTPError
     from queue import Queue, Empty
@@ -25,10 +23,9 @@ if sys.version_info >= (3,):
     from tkinter import ttk
     from tkinter.font import Font
     from tkinter.filedialog import (askdirectory, askopenfilename,
-                                    asksaveasfilename)
+         asksaveasfilename)
     from tkinter.messagebox import (showinfo, showwarning, showerror,
-                                    askquestion, askokcancel, askyesno,
-                                    askretrycancel)
+         askquestion, askokcancel, askyesno, askretrycancel)
 
     class aStr():
         def __str__(self):
@@ -37,17 +34,13 @@ if sys.version_info >= (3,):
     def cmp(a, b):
         return (a > b) - (a < b)
 
+#   range = xrange
+
     def b(s):
         return s.encode('utf-8')
 
     def u(s):
         return s.decode('utf-8')
-
-    def console_to_str(s):
-        try:
-            return s.decode(console_encoding)
-        except UnicodeDecodeError:
-            return s.decode('utf_8')
 
     def fwrite(f, s):
         f.buffer.write(b(s))
@@ -61,6 +54,7 @@ if sys.version_info >= (3,):
     collections_types = list, tuple, set, frozenset
     all_types = (int, float, complex, str, bytearray,
                  list, tuple, set, frozenset, dict)
+
 
 else:
     from urllib2 import URLError, HTTPError
@@ -78,25 +72,22 @@ else:
     import ttk
     from tkFont import Font
     from tkFileDialog import (askdirectory, askopenfilename,
-                              asksaveasfilename)
+         asksaveasfilename)
     from tkMessageBox import (showinfo, showwarning, showerror,
-                              askquestion, askokcancel, askyesno,
-                              askretrycancel)
+         askquestion, askokcancel, askyesno, askretrycancel)
 
     class aStr():
         def __str__(self):
             return self.__unicode__().encode('utf-8')
 
 #   cmp = cmp
+
     range = xrange
 
     def b(s):
         return s
 
     def u(s):
-        return s
-
-    def console_to_str(s):
         return s
 
     def fwrite(f, s):

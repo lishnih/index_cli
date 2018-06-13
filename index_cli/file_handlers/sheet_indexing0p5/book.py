@@ -8,11 +8,11 @@ from __future__ import (division, absolute_import,
 import os
 import xlrd
 
-from .data_funcs import filter_match
+from .stuff.data_funcs import filter_match
 from .sheet import proceed_sheet
 
 
-def proceed_book(filename, options, status):
+def proceed_book(filename, options, recorder):
     sh_list = []
     p_list = []
     count = 0
@@ -30,7 +30,7 @@ def proceed_book(filename, options, status):
                 book = xlrd.open_workbook(filename, on_demand=True)
 
         except Exception as e:
-            status.error(">>> Error >>>", e, filename)
+            recorder.error(">>> Error >>>", e, filename)
 
         else:
             sheets = book.sheet_names()
@@ -56,7 +56,7 @@ def proceed_book(filename, options, status):
                     count += 1
 
                     if count >= max:
-                        status.debug("flushing...")
+                        recording.debug("Flushing...")
                         yield sh_list, p_list
 
                         sh_list = []
