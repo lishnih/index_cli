@@ -4,4 +4,4 @@
 
 __pkgname__ = __name__
 __description__ = "Index System (cli branch)"
-__version__ = "0.5"
+__version__ = "0.5.1"

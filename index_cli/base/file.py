@@ -30,9 +30,10 @@ def preparing_file(filename, options, recorder, DIR):
     try:
         statinfo = os.stat(filename)
     except:
-        size = None
-        mtime = None
-        date = None
+        recorder.debug("Failed to get statinfo for file", DIR.name, filename)
+        size = -1
+        mtime = -1
+        date = -1
     else:
         size = statinfo.st_size
         mtime = statinfo.st_mtime

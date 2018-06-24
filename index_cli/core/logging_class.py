@@ -5,18 +5,31 @@
 from __future__ import (division, absolute_import,
                         print_function, unicode_literals)
 
+import time
 import logging
 import traceback
 
 
 class Logging(object):
     buffer = []
+    timer = {}
 
-    def debug(self, *msg):
+    def debug(self, *msg, **kargs):
+        timer = kargs.get('timer')
+        if timer:
+            label, duration = timer
+            current = int(time.time())
+            if self.timer.has_key(label):
+                last = self.timer[label]
+                if current - last < duration:
+                    return
+
+            self.timer[label] = current
+
         for i in msg:
             logging.debug(i)
 
-    def info(self, *msg):
+    def info(self, *msg, **kargs):
         for i in msg:
             logging.info(i)
 

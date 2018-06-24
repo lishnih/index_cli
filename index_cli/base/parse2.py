@@ -58,7 +58,7 @@ def do_stuff_row(row, options, recorder):
         except MemoryError:
             md5, sha256 = '-1', '-1'
 
-        recorder.debug(filename)
+        recorder.debug(filename, timer=('filename', 5))
         try:
             if recorder.opening_func:
                 recorder.opening_func(options, recorder)
@@ -188,7 +188,7 @@ LIMIT 0, {1}
                 q.join()
 
             if not empty:
-                recorder.info("Processed {0} files".format(len(bundle)))
+                recorder.debug("Processed {0} files".format(len(bundle)))
 
     else:
         recorder.info("Parsing without threads...")
@@ -204,6 +204,6 @@ LIMIT 0, {1}
                 do_stuff_row(row, options, recorder)
 
             if not empty:
-                recorder.info("Processed {0} files".format(len(rows)))
+                recorder.debug("Processed {0} files".format(len(rows)))
 
     recorder.info("Processing time: {0}".format(recorder.time))

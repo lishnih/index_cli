@@ -30,7 +30,7 @@ def proceed_book(filename, options, status, FILE):
             else:
                 book = xlrd.open_workbook(filename, on_demand=True)
 
-        except Exception, e:
+        except Exception as e:
             print(">>> Error >>>", e, repr(filename))
             return
 
