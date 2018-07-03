@@ -98,7 +98,7 @@ class Recorder(Status):
         Status.info(self, *msg, **kargs)
 
     def warning(self, *msg, **kargs):
-        once = kargs.get('once')
+        once = kargs.pop('once')
         if once:
             if once in self.buffer:
                 return
@@ -114,8 +114,7 @@ class Recorder(Status):
                 self.session.add(ERR)
             self.session.commit()
 
-        for i in msg:
-            logging.warning(i)
+        Status.debug(self, *msg, **kargs)
 
     def error(self, msg, *args, **kargs):
         if self._error_class:

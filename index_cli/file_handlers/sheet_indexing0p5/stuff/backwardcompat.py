@@ -21,14 +21,14 @@ if sys.version_info >= (3,):
     import xmlrpc.client as xmlrpclib
     import http.client as httplib
 
-    import tkinter as tk
-    from tkinter import ttk
-    from tkinter.font import Font
-    from tkinter.filedialog import (askdirectory, askopenfilename,
-                                    asksaveasfilename)
-    from tkinter.messagebox import (showinfo, showwarning, showerror,
-                                    askquestion, askokcancel, askyesno,
-                                    askretrycancel)
+#   import tkinter as tk
+#   from tkinter import ttk
+#   from tkinter.font import Font
+#   from tkinter.filedialog import (askdirectory, askopenfilename,
+#                                   asksaveasfilename)
+#   from tkinter.messagebox import (showinfo, showwarning, showerror,
+#                                   askquestion, askokcancel, askyesno,
+#                                   askretrycancel)
 
     class aStr():
         def __str__(self):
@@ -74,14 +74,14 @@ else:
     import xmlrpclib
     import httplib
 
-    import Tkinter as tk
-    import ttk
-    from tkFont import Font
-    from tkFileDialog import (askdirectory, askopenfilename,
-                              asksaveasfilename)
-    from tkMessageBox import (showinfo, showwarning, showerror,
-                              askquestion, askokcancel, askyesno,
-                              askretrycancel)
+#   import Tkinter as tk
+#   import ttk
+#   from tkFont import Font
+#   from tkFileDialog import (askdirectory, askopenfilename,
+#                             asksaveasfilename)
+#   from tkMessageBox import (showinfo, showwarning, showerror,
+#                             askquestion, askokcancel, askyesno,
+#                             askretrycancel)
 
     class aStr():
         def __str__(self):
