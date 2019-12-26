@@ -11,7 +11,7 @@ import calendar
 
 import xlrd
 
-from .backwardcompat import *
+from .types23 import *
 
 
 def get_int(sh, row, col, default=0):
@@ -25,7 +25,7 @@ def get_int(sh, row, col, default=0):
 
 def get_str(sh, row, col):
     val = get_value(sh, row, col)
-    return unicode(val)
+    return str(val)
 
 
 def in_crange(row, col, crange):

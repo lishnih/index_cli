@@ -12,7 +12,7 @@ from .stuff.data_funcs import filter_match
 from .sheet import proceed_sheet
 
 
-def proceed_book(filename, options, recorder):
+def proceed_book(filename, options, recorder, parse_id):
     sh_list = []
     p_list = []
     count = 0
@@ -30,7 +30,10 @@ def proceed_book(filename, options, recorder):
                 book = xlrd.open_workbook(filename, on_demand=True)
 
         except Exception as e:
-            recorder.error(">>> Error >>>", e, filename)
+            recorder.exception("Some issue during proceed_book",
+                target=filename,
+                parse_id = parse_id,
+                once="sheet_indexing_book_1")
 
         else:
             sheets = book.sheet_names()
@@ -42,6 +45,7 @@ def proceed_book(filename, options, recorder):
                 seq = sheets.index(name)
 
                 sh_dict = dict(
+                    _parse_id = parse_id,
                     name = sh.name,
                     seq = seq,
                     ncols = sh.ncols,
@@ -56,7 +60,7 @@ def proceed_book(filename, options, recorder):
                     count += 1
 
                     if count >= max:
-                        recording.debug("Flushing...")
+                        recorder.debug("Flushing...", _debug=2)
                         yield sh_list, p_list
 
                         sh_list = []

@@ -5,5 +5,7 @@ from __future__ import (division, absolute_import,
                         print_function, unicode_literals)
 
 
-def proceed(filename, parse_id, options, recorder):
+def proceed(filename, options, recorder, parse_id):
+    recorder.debug(filename, _level=5)
+
     return 1

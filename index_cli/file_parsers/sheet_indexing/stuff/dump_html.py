@@ -5,11 +5,10 @@
 from __future__ import (division, absolute_import,
                         print_function, unicode_literals)
 
-import logging
 from inspect import ismethod
 from xml.sax.saxutils import escape, prepare_input_source
 
-from .backwardcompat import *
+from .types23 import *
 
 
 """ Отладочный вывод переменных различных типов
@@ -27,10 +26,10 @@ def plain_val(obj):
     if obj is None:
         buf = '/is None/'
     elif isinstance(obj, numeric_types):
-        buf = unicode(obj)
+        buf = str(obj)
     else:
         try:
-            buf = unicode(obj)
+            buf = str(obj)
         except:
             buf = repr(obj)
             buf = buf.replace(r'\n', '\n')
@@ -155,7 +154,7 @@ def html(obj, it=1, root=None, collection=[]):
             return html_val(obj, "green")
     collection.append(obj)
 
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, collections_types):
         buf = '<ul>\n'
         for value in obj:
             buf += '<li>{0}</li>'.format(html(value, it, obj, collection))

@@ -11,15 +11,15 @@ from sqlalchemy import Column, Integer, Float, String, Text, DateTime, PickleTyp
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, relationship
 
-from ....models.slice_dir_file import Base, aStr, Parse, String
+from ....base.models import Base, Parse, String
 
 
-class Sheet(Base, aStr):        # rev. 20180605
+class Sheet(Base):            # rev. 20180605
     __tablename__ = 'sheets'
-    __table_args__ = {'mysql_engine': 'MyISAM', 'mysql_charset': 'utf8'}
+    __table_args__ = {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'}
 
     id = Column(Integer, primary_key=True)
-    _parses_id = Column(Integer, ForeignKey('parses.id', onupdate="CASCADE", ondelete="CASCADE"))
+    _parse_id = Column(Integer, ForeignKey('parses.id', onupdate="CASCADE", ondelete="CASCADE"))
     _parse = relationship(Parse, backref=backref(__tablename__, cascade='all, delete, delete-orphan'))
 
     name = Column(String, nullable=False)                           # Имя листа
@@ -36,12 +36,12 @@ class Sheet(Base, aStr):        # rev. 20180605
         return "<Sheet '{0}' (id:{1})>".format(self.name, self.id)
 
 
-class Cell(Base, aStr):         # rev. 20170429
+class Cell(Base):             # rev. 20170429
     __tablename__ = 'cells'
-    __table_args__ = {'mysql_engine': 'MyISAM', 'mysql_charset': 'utf8'}
+    __table_args__ = {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'}
 
     id = Column(Integer, primary_key=True)
-    _sheets_id = Column(Integer, ForeignKey('sheets.id', onupdate="CASCADE", ondelete="CASCADE"))
+    _sheet_id = Column(Integer, ForeignKey('sheets.id', onupdate="CASCADE", ondelete="CASCADE"))
     _sheet = relationship(Sheet, backref=backref(__tablename__, cascade='all, delete, delete-orphan'))
 
     value = Column(String, nullable=False, server_default='')     # Значение ячейки
