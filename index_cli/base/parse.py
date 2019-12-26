@@ -17,7 +17,7 @@ from .models import Dir, File, Node, Parser, Parse
 
 # from .proceed_dropbox import download_file_dropbox
 # from .proceed_google import download_file_google
-from .proceed.yandex import yandex_download
+# from .proceed.yandex import yandex_download
 
 
 if PY2:
@@ -59,10 +59,10 @@ def do_stuff_row(filename, options, recorder, parse):
 
 def parse_files(filename, filetype, options, recorder):
     provider = options.get('provider', 'filesystem')
-    if provider == 'yandex':
-        download_file = yandex_download
-    else:     # filesystem
-        download_file = None
+#     if provider == 'yandex':
+#         download_file = yandex_download
+#     else:     # filesystem
+    download_file = None
 
     recorder.time
 

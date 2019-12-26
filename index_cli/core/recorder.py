@@ -7,18 +7,21 @@ from __future__ import (division, absolute_import,
 
 import traceback
 
+from sqlalchemy.engine.reflection import Inspector
+
 from .status_class import Status
 
 
 class Recorder(Status):
-    def __init__(self, session=None, func=None, error_class=None):
+    _cash = {}
+    _unique_constraints = {}
+
+    def __init__(self, session=None, logging_class=None):
         Status.__init__(self)
         self._session = session
-        self._func = func
-        self._error_class = error_class
-        self._cash = {}
+        self._logging_class = logging_class
 
-    # === session ===
+    # === Session ===
 
     @property
     def session(self):
@@ -30,6 +33,7 @@ class Recorder(Status):
     @session.setter
     def session(self, session):
         self._session = session
+        self._insp = Inspector.from_engine(self._session.bind)
 
     @property
     def bind(self):
@@ -45,39 +49,60 @@ class Recorder(Status):
     def execute(self, *args, **kargs):
         return self.session.execute(*args, **kargs)
 
+    def merge(self, *args, **kargs):
+        return self.session.merge(*args, **kargs)
+
+    def flush(self):
+        self.session.flush()
+
     def commit(self):
         self.session.commit()
 
-    # === func ===
+    def get_unique_constraints(self, table):
+        if table in self._unique_constraints:
+            return self._unique_constraints[table]
 
-    @session.setter
-    def func(self, func):
-        self._func = func
+        res = self._insp.get_unique_constraints(table)
+        column_names = res[0].get('column_names') if res else []
+        return self._unique_constraints.setdefault(table, column_names)
 
-    def func(self, *args, **kargs):
-        if self._func:
-            self._func(*args, **kargs)
+    def get_or_create(self, model, func=None, defaults=None, **kwargs):
+        params = {k: v for k, v in kwargs.items() if v is not None}
+#         column_names = self.get_unique_constraints(model.__table__.name)
+#         if column_names:
+#             params = {k: v for k, v in params.items() if k in column_names}
 
-    # === error_class ===
+        instance = self.query(model).filter_by(**params).first()
+        if instance:
+            if func:
+                func(instance)
 
-    @property
-    def error_class(self):
-        if not self._error_class:
-            raise Exception("No error_class associated!")
+        else:
+            if defaults:
+                kwargs.update(defaults)
 
-        return self._error_class
+            instance = model(**kwargs)
+            self.add(instance)
 
-    @error_class.setter
-    def error_class(self, error_class):
-        self._error_class = error_class
+        return instance
 
     # === Utilities ===
 
     def get_current(self, tablename, default=None):
         return self._cash.get(tablename, default)
 
-    def get_slice(self):
-        return self.get_current('slices')
+    # === Error Class ===
+
+    @property
+    def logging_class(self):
+        if not self._logging_class:
+            raise Exception("No logging_class associated!")
+
+        return self._logging_class
+
+    @logging_class.setter
+    def logging_class(self, logging_class):
+        self._logging_class = logging_class
 
     # === Debug ===
 
@@ -85,57 +110,48 @@ class Recorder(Status):
         Status.debug(self, *msg, **kargs)
 
     def info(self, *msg, **kargs):
-        if self._error_class:
-            SLICE = self.get_slice()
-            slice_id = SLICE.id if SLICE else None
-            parse_id = kargs.pop('parse_id', None)
-            target = kargs.pop('target', None)
-            for i in msg:
-                ERR = self._error_class(i, 'INFO', slice_id=slice_id, parse_id=parse_id, target=target)
-                self.session.add(ERR)
-            self.session.commit()
-
         Status.info(self, *msg, **kargs)
 
-    def warning(self, *msg, **kargs):
-        once = kargs.pop('once')
-        if once:
-            if once in self.buffer:
-                return
-            self.buffer.append(once)
-
-        if self._error_class:
-            SLICE = self.get_slice()
-            slice_id = SLICE.id if SLICE else None
+        if self._logging_class:
+            PARSER = self.parser if hasattr(self, 'parser') else None
             parse_id = kargs.pop('parse_id', None)
-            target = kargs.pop('target', None)
             for i in msg:
-                ERR = self._error_class(i, 'WARNING', slice_id=slice_id, parse_id=parse_id, target=target)
+                ERR = self._logging_class(name=i, level='INFO',
+                    parser=PARSER, _parse_id=parse_id, **kargs)
                 self.session.add(ERR)
             self.session.commit()
 
-        Status.debug(self, *msg, **kargs)
+    def warning(self, *msg, **kargs):
+        Status.warning(self, *msg, **kargs)
+
+        if self._logging_class:
+            PARSER = self.parser if hasattr(self, 'parser') else None
+            parse_id = kargs.pop('parse_id', None)
+            for i in msg:
+                ERR = self._logging_class(name=i, level='WARNING',
+                    parser=PARSER, _parse_id=parse_id, **kargs)
+                self.session.add(ERR)
+            self.session.commit()
 
     def error(self, msg, *args, **kargs):
-        if self._error_class:
-            SLICE = self.get_slice()
-            slice_id = SLICE.id if SLICE else None
-            parse_id = kargs.pop('parse_id', None)
-            target = kargs.pop('target', None)
-            ERR = self._error_class(msg, 'ERROR', slice_id=slice_id, parse_id=parse_id, target=target)
-            self.session.add(ERR)
-            self.session.commit()
-
         Status.error(self, msg, *args, **kargs)
 
-    def exception(self, msg, *args, **kargs):
-        if self._error_class:
-            SLICE = self.get_slice()
-            slice_id = SLICE.id if SLICE else None
+        if self._logging_class:
+            PARSER = self.parser if hasattr(self, 'parser') else None
             parse_id = kargs.pop('parse_id', None)
-            target = kargs.pop('target', None)
-            ERR = self._error_class(msg, 'EXCEPTION', slice_id=slice_id, parse_id=parse_id, target=target, traceback=traceback.format_exc())
+            ERR = self._logging_class(name=msg, level='ERROR',
+                parser=PARSER, _parse_id=parse_id, args=repr(args), kargs=repr(kargs))
             self.session.add(ERR)
             self.session.commit()
 
+    def exception(self, msg, *args, **kargs):
         Status.exception(self, msg, *args, **kargs)
+
+        if self._logging_class:
+            PARSER = self.parser if hasattr(self, 'parser') else None
+            parse_id = kargs.pop('parse_id', None)
+            ERR = self._logging_class(name=msg, level='EXCEPTION',
+                parser=PARSER, _parse_id=parse_id, args=repr(args), kargs=repr(kargs),
+                traceback=traceback.format_exc())
+            self.session.add(ERR)
+            self.session.commit()
