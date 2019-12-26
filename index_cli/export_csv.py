@@ -2,20 +2,19 @@
 # coding=utf-8
 # Stan 2017-04-02
 
-from __future__ import (division, absolute_import,
-                        print_function, unicode_literals)
+from __future__ import division, absolute_import, print_function
 
 import csv
-import codecs
-import cStringIO
-from importlib import import_module
 
-from sqlalchemy import func
-from sqlalchemy.sql import select, text
+from sqlalchemy import func, select, text
 
-from .core.backwardcompat import *
+from .core.types23 import *
 from .core.db import getDbUri, openDbUri
 from .core.status_class import Status
+
+
+def dumb_python(s):
+    return s.encode('utf-8') if isinstance(s, unicode) else s
 
 
 def main(options):
@@ -29,6 +28,7 @@ def main(options):
 
     # Устанавливаем соединение с БД
     engine, session = openDbUri(dburi)
+    status.info(engine)
 
     sql = options.get('sql')
     offset = int(options.get('offset', 0))
@@ -39,21 +39,23 @@ def main(options):
 
         output = options.get('output', 'output')
         filename = "{0}.csv".format(output)
-        with open(filename, 'wb') as csvfile:
-            writer = UnicodeWriter(csvfile, delimiter=b';')
 
-            while 1:
+        with open(filename, 'w') as csvfile:
+            writer = csv.writer(csvfile, delimiter=';', lineterminator='\n')
+
+            shown = True
+            while shown:
                 names, rows, total, shown, s = get_rows_plain(session, sql, options=options, offset=offset, limit=limit)
 
                 if not offset:
                     status.info("Records: {0}".format(total))
-                    writer.writerow(names)
-
-                if not shown:
-                    break
+                    row = [dumb_python(s) for s in names]
+                    writer.writerow(row)
 
                 status.debug("Flushing {0} rows...".format(shown))
-                writer.writerows(rows)
+                for row in rows:
+                    row = [dumb_python(s) for s in row]
+                    writer.writerow(row)
 
                 offset += limit
 
@@ -79,28 +81,3 @@ def get_rows_plain(session, sql, options={}, offset=0, limit=None):
     shown = len(rows)
 
     return names, rows, total, shown, s
-
-
-class UnicodeWriter:
-    def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
-        # Redirect output to a queue
-        self.queue = cStringIO.StringIO()
-        self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
-        self.stream = f
-        self.encoder = codecs.getincrementalencoder(encoding)()
-
-    def writerow(self, row):
-        self.writer.writerow([s.encode("utf-8") if isinstance(s, string_types) else s for s in row])
-        # Fetch UTF-8 output from the queue ...
-        data = self.queue.getvalue()
-        data = data.decode("utf-8")
-        # ... and reencode it into the target encoding
-        data = self.encoder.encode(data)
-        # write to the target stream
-        self.stream.write(data)
-        # empty queue
-        self.queue.truncate(0)
-
-    def writerows(self, rows):
-        for row in rows:
-            self.writerow(row)

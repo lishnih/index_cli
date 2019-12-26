@@ -5,10 +5,7 @@
 from __future__ import (division, absolute_import,
                         print_function, unicode_literals)
 
-try:
-    from .backwardcompat import *
-except:
-    from backwardcompat import *
+from .types23 import *
 
 
 """ Отладочный вывод переменных
@@ -18,7 +15,7 @@ plain      вывод переменной
 
 
 def plain_type(obj):
-    buf = unicode(type(obj)).replace("'", "").replace("type ", "")\
+    buf = str(type(obj)).replace("'", "").replace("type ", "")\
           .replace("class ", "").replace("<", "[").replace(">", "]")
 
     return buf
@@ -30,7 +27,7 @@ def plain(obj, level=0):
         return buf
 
     if isinstance(obj, numeric_types):
-        buf = unicode(obj)
+        buf = str(obj)
         return buf
 
     if isinstance(obj, bytes):
@@ -43,14 +40,14 @@ def plain(obj, level=0):
 
     if isinstance(obj, string_types):
         try:
-            buf = "'{0}'".format(unicode(obj).rstrip('\r\n'))
+            buf = "'{0}'".format(str(obj).rstrip('\r\n'))
         except:
             buf = "repr: {0!r}".format(obj)
 
         return buf
 
     if isinstance(obj, simple_types):
-        buf = "'{0}'".format(unicode(obj))
+        buf = "'{0}'".format(str(obj))
         return buf
 
     if level > 10:
@@ -81,7 +78,7 @@ def plain(obj, level=0):
 
     if isinstance(obj, dict):
         buf += "{\n"
-        for key in sorted(obj.keys(), key=unicode):
+        for key in sorted(obj.keys(), key=str):
             val = obj[key]
             key = plain(key)
             buf += wrap + "    {0:16}: {1}\n".format(key, plain(val, level+1))

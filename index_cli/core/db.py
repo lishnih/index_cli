@@ -10,28 +10,29 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from .backwardcompat import *
+from .types23 import *
 
 
 def getDbUri(config={}):
-    dbname = config.get('dbname')
+    dbhome = os.path.expanduser(config.get("dbhome", "~"))
+    dbname = config.get("dbname", "default")
     if dbname:
-        return "{0}:///{1}/{2}.sqlite".format('sqlite', os.path.expanduser("~"), dbname)
+        return "{0}:///{1}/{2}.sqlite".format('sqlite', dbhome, dbname)
 
     dburi = config.get("dburi")
     if not dburi:
         dbtype = config.get("dbtype")
 
         if dbtype == "sqlite":
-            dbname = config.get("dbname", os.path.expanduser("~/default.sqlite"))
-            dburi = "{0}:///{1}".format(dbtype, dbname)
+            name = config.get("name", "default")
+            dburi = "{0}:///{1}/{2}.sqlite".format(dbtype, dbhome, name)
 
         elif dbtype == "mysql":
-            dbname = config.get("dbname", "default")
-            host = config.get("host",   "localhost")
-            user = config.get("user",   "root")
+            name = config.get("name", "default")
+            host = config.get("host", "localhost")
+            user = config.get("user", "root")
             passwd = config.get("passwd", "")
-            dburi = "{0}://{1}:{2}@{3}/{4}".format(dbtype, user, passwd, host, dbname)
+            dburi = "{0}://{1}:{2}@{3}/{4}".format(dbtype, user, passwd, host, name)
 
     if not dburi:
         dburi = "sqlite://"
@@ -45,7 +46,7 @@ def openDbUri(dburi, session=None):
         filename = engine.url.database
         if filename:
             dirname = os.path.dirname(filename)
-            if not os.path.exists(dirname):
+            if dirname and not os.path.exists(dirname):
                 os.makedirs(dirname)
 
     if not session:
